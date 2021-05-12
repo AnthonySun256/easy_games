@@ -27,7 +27,7 @@ class Game:
 
             if not self.update_control():
                 continue
-            if time.time() - self.start_time < 0.6:
+            if time.time() - self.start_time < 1/game_config.snake_config["speed"]:
                 continue
 
             self.start_time = time.time()

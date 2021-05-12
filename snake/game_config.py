@@ -15,7 +15,7 @@ class Position:
 snake_config = {
     "length": 3,
     "lives": 3,
-    "speed": 1,
+    "speed": 2,
 }
 
 

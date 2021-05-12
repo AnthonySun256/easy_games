@@ -9,7 +9,6 @@ class Snake(object):
         self.direction = game_config.D_Down
         self.body = []
         self.last_body = []
-        self.speed = game_config.snake_config["speed"]
         for i in range(3):
             self.body.append(Position(2, 3 - i))
 
@@ -17,7 +16,6 @@ class Snake(object):
         self.direction = game_config.D_Down
         self.body = []
         self.last_body = []
-        self.speed = game_config.snake_config["speed"]
         for i in range(3):
             self.body.append(Position(2, 3 - i))
 
@@ -26,13 +24,13 @@ class Snake(object):
 
         # 修改每个方向上的速度
         if self.direction == game_config.D_Up:
-            dis_increment_factor.y = -self.speed
+            dis_increment_factor.y = -1
         elif self.direction == game_config.D_Down:
-            dis_increment_factor.y = self.speed
+            dis_increment_factor.y = 1
         elif self.direction == game_config.D_Left:
-            dis_increment_factor.x = -self.speed
+            dis_increment_factor.x = -1
         elif self.direction == game_config.D_Right:
-            dis_increment_factor.x = self.speed
+            dis_increment_factor.x = 1
 
         return dis_increment_factor
 
@@ -41,12 +39,12 @@ class Snake(object):
         self.last_body = copy.deepcopy(self.body)
 
         for index, item in enumerate(self.body):
-            if index < self.speed:  # 长度小于等于速度的部分一定是一条直线
+            if index < 1:
                 item.x += dis_increment_factor.x
                 item.y += dis_increment_factor.y
             else:  # 剩下的部分要跟着前一部分走
-                item.x = self.last_body[index - self.speed].x
-                item.y = self.last_body[index - self.speed].y
+                item.x = self.last_body[index - 1].x
+                item.y = self.last_body[index - 1].y
 
     def check_alive(self) -> bool:  # 检查是否死亡
         flag1 = self.check_eat_self()
@@ -54,7 +52,7 @@ class Snake(object):
         return not (flag1 or flag2)
 
     def eat_food(self, food) -> None:
-        self.body.append(self.last_body[-self.speed])  # 长大一个元素
+        self.body.append(self.last_body[-1])  # 长大一个元素
 
     def check_eat_food(self, foods: list) -> int:  # 返回吃到了哪个苹果
         for index, food in enumerate(foods):
