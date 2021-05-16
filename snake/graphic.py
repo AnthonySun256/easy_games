@@ -111,7 +111,7 @@ class Graphic:
     def draw_text(self, win, pos, text, attr=None) -> None:
         win.addstr(pos.y, pos.x, text, attr)
 
-    def draw_message_window(self, texts: list) -> None:  # 接收一个 str 数组
+    def draw_message_window(self, texts: list) -> None:  # 接收一个 str 列表
         text1 = "Press any key to continue."
         nrows = 6 + len(texts)  # 留出行与行之间的空隙
         ncols = max(*[len(len_tex) for len_tex in texts], len(text1)) + 20

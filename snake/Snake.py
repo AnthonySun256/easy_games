@@ -54,7 +54,7 @@ class Snake(object):
     def eat_food(self, food) -> None:
         self.body.append(self.last_body[-1])  # 长大一个元素
 
-    def check_eat_food(self, foods: list) -> int:  # 返回吃到了哪个苹果
+    def check_eat_food(self, foods: list) -> int:  # 返回吃到了哪个食物
         for index, food in enumerate(foods):
             if food == self.body[0]:
                 self.eat_food(food)
