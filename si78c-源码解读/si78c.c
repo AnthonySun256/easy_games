@@ -253,18 +253,18 @@ struct Mem
     GameObjHeader plyrShotHeader; //  0x2020
     uint8_t plyrShotStatus;       //  0x2025 0 存活，1 刚初始化，2 正常移动，3 击中非外星人，5 正在处理外星人爆炸，4 外星人已爆炸（从活动状态移除）
     uint8_t blowUpTimer;          //  0x2026
-    SprDesc playerShotDesc;       //  0x2027
+    SprDesc playerShotDesc;       //  0x2027 玩家 Shot 描述符
     uint8_t shotDeltaYr;          //  0x202c
     uint8_t fireBounce;           //  0x202d
     uint8_t pad_21[2];            //  0x202e
     GameObjHeader rolShotHeader;  //  0x2030
-    AShot rolShotData;            //  0x2035
+    AShot rolShotData;            //  0x2035 外星人 rolShot 数据
     GameObjHeader pluShotHeader;  //  0x2040
-    AShot pluShotData;            //  0x2045
+    AShot pluShotData;            //  0x2045 外星人 pluShot 数据
     GameObjHeader squShotHeader;  //  0x2050
-    AShot squShotData;            //  0x2055
+    AShot squShotData;            //  0x2055 外星人 seqShot 数据
     uint8_t pad_22;               //  0x2060
-    uint8_t collision;            //  0x2061
+    uint8_t collision;            //  0x2061 1=检测到精灵碰撞
     SprDesc expAlien;             //  0x2062 爆炸飞船图片 1CC0
     uint8_t playerDataMSB;        //  0x2067 当前玩家数据区域 MSB （21xx 或 22xx)
     uint8_t playerOK;             //  0x2068 1 代表 ok，0 代表爆炸
@@ -275,10 +275,10 @@ struct Mem
     uint8_t invaded;              //  0x206d
     uint8_t skipPlunger;          //  0x206e 只剩一个外星人的时候置 1 来关闭 plunger shot
     uint8_t pad_24;               //  0x206f
-    uint8_t otherShot1;           //  0x2070
-    uint8_t otherShot2;           //  0x2071
-    uint8_t vblankStatus;         //  0x2072
-    AShot aShot;                  //  0x2073
+    uint8_t otherShot1;           //  0x2070 保存另外 Shot 的信息
+    uint8_t otherShot2;           //  0x2071 保存另外 Shot 的信息
+    uint8_t vblankStatus;         //  0x2072 80=正在绘制（不要改变画面），0=处理消隐（可以改变画面）
+    AShot aShot;                  //  0x2073 外星人 Shot 数据
     uint8_t alienShotDelta;       //  0x207e
     uint8_t shotPicEnd;           //  0x207f 当前外星人射击动画的最后一个图片地址
     uint8_t shotSync;             //  0x2080 所有 3 种射击类型都与 GO-2 时间同步，在 game loop 中从 timer 中更新
@@ -863,7 +863,7 @@ static void init_threads(YieldReason entry_point)
     // 设置后继上下文
     main_ctx.uc_link = &frontend_ctx;
 
-    // 修改 main_ctx 上下文指向 run_main_ctx 函数
+    // 修改 main_ctx 上下文指向 run_main_ctx 函数，调用时传入参数为 entry_point
     makecontext(&main_ctx, (void (*)())run_main_ctx, 1, entry_point);
 
     /** 以上内容相当于新建了一个叫 main_cxt 的协程，运行 run_main_ctx 函数, frontend_ctx 为后继上下文
@@ -930,8 +930,6 @@ static void run_int_ctx()
     {
         // 0xcf = RST 1 opcode (call 0x8)
         // 0xd7 = RST 2 opcode (call 0x16)
-
-        // 场中间中断
         if (irq_vector == 0xcf)
             midscreen_int();
         else if (irq_vector == 0xd7)
@@ -1295,7 +1293,7 @@ static void midscreen_int()
     // 如果没有运动的游戏对象，返回
     if (m.gameTasksRunning == 0)
         return;
-    // 在欢迎界面 且 没有在演示模式，返回
+    // 在欢迎界面 且 没有在演示模式，返回（只在游戏模式和demo模式下继续运行）
     if (!m.gameMode && !(m.isrSplashTask & 0x1))
         return;
 
@@ -1309,7 +1307,8 @@ static void midscreen_int()
 }
 
 // Executed via interrupt when the beam hits the end of the screen
-/** 当光击中屏幕最后一点（模拟老式街机原理）时触发
+/** 
+ * 当光击中屏幕最后一点（模拟老式街机原理）时触发
  * 主要处理游戏结束、投币、游戏中各种事件处理、播放演示动画
  */
 static void vblank_int()
@@ -1510,7 +1509,7 @@ static void DrawAlien()
 }
 
 // Find the next live alien to draw. Also detects whether rack has reached the bottom.
-// 找到并绘制下一个活着的外星人。并且检测飞船是否碰到了屏幕底端
+// 找到要绘制的下一个活着的外星人设置标志位等待绘制，并且检测外星飞船是否碰到了屏幕底端
 static void CursorNextAlien()
 {
     // xref 0141
@@ -3276,7 +3275,7 @@ static void NewGame(uint8_t is2p, uint8_t cost, int skip)
         if (flags & SHIELDS)
         {
             DrawBottomLine();
-
+            // 判断当前时玩家一还是玩家二
             if (m.playerDataMSB & 0x1)
             {
                 RestoreShieldsP1();
@@ -3299,7 +3298,7 @@ static void NewGame(uint8_t is2p, uint8_t cost, int skip)
         SoundBits3On(0x20);
 
         // xref 081f game loop
-
+        // 开始游戏逻辑循环
         while (TRUE)
         {
             PlrFireOrDemo();
@@ -3425,6 +3424,7 @@ static uint8_t GetShipsPerCred()
 }
 
 // Increase alien shot speed when there are less than nine aliens on screen
+// 当当前屏幕上外星飞船数目小于 9 个时加快外星飞船射击速度
 static void SpeedShots()
 {
     // xref 08d8
@@ -4718,10 +4718,15 @@ static void SetSoundWithoutFleet(uint8_t v)
 // Handles rotating the fleet sounds if it is time to do so, and determines the
 // delay between them using a table keyed by the number of live aliens.
 // The bonus ship sound is also handled here.
+
+/**
+ * 如果时间允许，处理舰队旋转的声音，并且它们之间的延迟根据外星人存活数目由一个表控制。
+ * 奖励飞船的声音也在这里处理
+ */
 static uint8_t FleetDelayExShip()
 {
     // xref 1775
-    // The two sound tables (in decimal):
+    // The two sound tables (in decimal): 两张声音表（10进制）
     //   [ 50 43 36 28 22 17 13 10 08 07 06 05 04 03 02 01 ] (soundDelayKey)
     //   [ 52 46 39 34 28 24 21 19 16 14 13 12 11 09 07 05 ] (soundDelayValue)
 
@@ -4814,6 +4819,7 @@ static void on_tilt()
 }
 
 // Play appropriate sounds based on saucer state.
+// 根据飞碟状态播放合适的音乐
 static void CtrlSaucerSound()
 {
     // xref 1804
